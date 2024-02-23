@@ -68,5 +68,9 @@ obj-$(CONFIG_QRC)		+= qrc/
 obj-$(CONFIG_HDMI_INPUT_MUX)	+= hdmi_input_mux.o
 obj-$(CONFIG_ANT_CHECK)          += ant_check.o
 obj-$(CONFIG_ANT_CHECK_DIV)      += ant_check_div.o
+<<<<<<< HEAD
 obj-m                           += board_id.o
 
+=======
+obj-$(CONFIG_TARGET_PROJECT_K7T) += board_id.o
+>>>>>>> 6832c6454be9 (Build cputfreq,board_id,serial_num when K7T_PROJECT enabled.)
