@@ -1474,6 +1474,13 @@ config NOTIFY_AOP
 	  receives the notification, save the state and once all subsystems
 	  went to power collapse put the device to Deep Sleep.
 
+config QCOM_MINIDUMP_LAST_KMSG
+       bool "export /proc/last_kmsg"
+       depends on QCOM_MINIDUMP
+       help
+         When the option is enabled, last_kmsg will export a proc filesystem
+         interface /proc/last_kmsg.
+
 config RENAME_DEVICES
 	tristate "Rename  block and network device names"
 	depends on VIRTIO_BLK
