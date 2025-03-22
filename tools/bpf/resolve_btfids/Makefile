@@ -56,6 +56,8 @@ CFLAGS += -g \
           -I$(LIBBPF_SRC) \
           -I$(SUBCMD_SRC)
 
+CFLAGS += -Wno-error=gcc-compat
+
 LIBS = -lelf -lz
 
 export srctree OUTPUT CFLAGS Q
