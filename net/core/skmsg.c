@@ -643,19 +643,15 @@ static void sk_psock_backlog(struct work_struct *work)
 	u32 len, off;
 	int ret;
 
+	/* Increment the psock refcnt to synchronize with close(fd) path in
+	 * sock_map_close(), ensuring we wait for backlog thread completion
+	 * before sk_socket freed. If refcnt increment fails, it indicates
+	 * sock_map_close() completed with sk_socket potentially already freed.
+	 */
+	if (!sk_psock_get(psock->sk))
+		return;
 	mutex_lock(&psock->work_mutex);
-	if (unlikely(state->skb)) {
-		spin_lock_bh(&psock->ingress_lock);
-		skb = state->skb;
-		len = state->len;
-		off = state->off;
-		state->skb = NULL;
-		spin_unlock_bh(&psock->ingress_lock);
-	}
-	if (skb)
-		goto start;
-
-	while ((skb = skb_dequeue(&psock->ingress_skb))) {
+	while ((skb = skb_peek(&psock->ingress_skb))) {
 		len = skb->len;
 		off = 0;
 		if (skb_bpf_strparser(skb)) {
@@ -664,35 +660,53 @@ static void sk_psock_backlog(struct work_struct *work)
 			off = stm->offset;
 			len = stm->full_len;
 		}
-start:
+
+		/* Resume processing from previous partial state */
+		if (unlikely(state->len)) {
+			len = state->len;
+			off = state->off;
+		}
+
 		ingress = skb_bpf_ingress(skb);
 		skb_bpf_redirect_clear(skb);
 		do {
 			ret = -EIO;
 			if (!sock_flag(psock->sk, SOCK_DEAD))
 				ret = sk_psock_handle_skb(psock, skb, off,
-							  len, ingress);
+						  len, ingress);
 			if (ret <= 0) {
 				if (ret == -EAGAIN) {
-					sk_psock_skb_state(psock, state, skb,
-							   len, off);
-					goto end;
+					sk_psock_skb_state(psock, state, len, off);
+					/* Restore redir info we cleared before */
+					skb_bpf_set_redir(skb, psock->sk, ingress);
+					/* Delay slightly to prioritize any
+					 * other work that might be here.
+					 */
+					if (sk_psock_test_state(psock, SK_PSOCK_TX_ENABLED))
+						schedule_delayed_work(&psock->work, 1);
 				}
-				/* Hard errors break pipe and stop xmit. */
-				sk_psock_report_error(psock, ret ? -ret : EPIPE);
-				sk_psock_clear_state(psock, SK_PSOCK_TX_ENABLED);
-				sock_drop(psock->sk, skb);
 				goto end;
 			}
-			off += ret;
-			len -= ret;
+			/* Hard errors break pipe and stop xmit. */
+			sk_psock_report_error(psock, ret ? -ret : EPIPE);
+			sk_psock_clear_state(psock, SK_PSOCK_TX_ENABLED);
+			sock_drop(psock->sk, skb);
+			goto end;
+		}
+		off += ret;
+		len -= ret;
 		} while (len);
 
-		if (!ingress)
+		/* The entire skb sent, clear state */
+		sk_psock_skb_state(psock, state, 0, 0);
+		skb = skb_dequeue(&psock->ingress_skb);
+		if (!ingress) {
 			kfree_skb(skb);
+		}
 	}
 end:
 	mutex_unlock(&psock->work_mutex);
+	sk_psock_put(psock->sk, psock);
 }
 
 struct sk_psock *sk_psock_init(struct sock *sk, int node)
