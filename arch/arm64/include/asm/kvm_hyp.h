@@ -120,7 +120,12 @@ extern u64 kvm_nvhe_sym(id_aa64isar0_el1_sys_val);
 extern u64 kvm_nvhe_sym(id_aa64isar1_el1_sys_val);
 extern u64 kvm_nvhe_sym(id_aa64mmfr0_el1_sys_val);
 extern u64 kvm_nvhe_sym(id_aa64mmfr1_el1_sys_val);
-extern u64 kvm_nvhe_sym(id_aa64mmfr2_el1_sys_val);
+extern unsigned int kvm_nvhe_sym(kvm_host_sve_max_vl);
+
+static inline bool guest_owns_fp_regs(struct kvm_vcpu *vcpu)
+{
+	return vcpu->arch.flags & KVM_ARM64_FP_ENABLED;
+}
 
 extern unsigned long kvm_nvhe_sym(__icache_flags);
 extern bool kvm_nvhe_sym(smccc_trng_available);
