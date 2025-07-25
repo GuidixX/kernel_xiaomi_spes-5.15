@@ -5497,7 +5497,7 @@ static int sm_fg_probe(struct i2c_client *client,
 	int ret = 0;
 	struct sm_fg_chip *sm;
 	struct iio_dev *indio_dev = NULL;
-	static probe_cnt = 0;
+	static int probe_cnt = 0;
 
 	if (probe_cnt == 0) {
 		pr_err("%s enter !\n",__func__);
