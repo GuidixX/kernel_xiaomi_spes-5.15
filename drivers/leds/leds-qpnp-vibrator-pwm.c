@@ -431,7 +431,7 @@ static int qpnp_vibrator_pwm_probe(struct platform_device *pdev)
 	//chip->overdrive_timer.function = vib_overdrive_timer;
 	dev_set_drvdata(&pdev->dev, chip);
 
-	chip->cdev.name = "vibrator";
+	chip->cdev.name = "vibrator_pitr";
 	chip->cdev.brightness_get = qpnp_vib_brightness_get;
 	chip->cdev.brightness_set = qpnp_vib_brightness_set;
 	chip->cdev.max_brightness = 100;
