@@ -475,4 +475,9 @@ static inline void __kvm_unexpected_el2_exception(void)
 	write_sysreg(__guest_exit_panic, elr_el2);
 }
 
+static bool kvm_hyp_handle_fpsimd(struct kvm_vcpu *vcpu, u64 *exit_code)
+{
+	return __hyp_handle_fpsimd(vcpu);
+}
+
 #endif /* __ARM64_KVM_HYP_SWITCH_H__ */

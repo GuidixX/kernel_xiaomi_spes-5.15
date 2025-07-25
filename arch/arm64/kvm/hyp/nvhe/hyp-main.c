@@ -649,7 +649,6 @@ static void handle___pkvm_vcpu_load(struct kvm_cpu_context *host_ctxt)
 
 	state->is_protected = state->vcpu->arch.pkvm.shadow_vm->arch.pkvm.enabled;
 
-	state->vcpu->arch.host_fpsimd_state = &state->host_fpsimd_state;
 	state->vcpu->arch.flags |= KVM_ARM64_FP_HOST;
 
 	if (state->is_protected) {

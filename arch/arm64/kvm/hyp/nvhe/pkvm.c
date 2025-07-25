@@ -68,7 +68,6 @@ static void pvm_init_traps_aa64pfr0(struct kvm_vcpu *vcpu)
 
 	vcpu->arch.hcr_el2 |= hcr_set;
 	vcpu->arch.hcr_el2 &= ~hcr_clear;
-	vcpu->arch.cptr_el2 |= cptr_set;
 }
 
 /*
@@ -131,7 +130,6 @@ static void pvm_init_traps_aa64dfr0(struct kvm_vcpu *vcpu)
 
 	vcpu->arch.mdcr_el2 |= mdcr_set;
 	vcpu->arch.mdcr_el2 &= ~mdcr_clear;
-	vcpu->arch.cptr_el2 |= cptr_set;
 }
 
 /*
@@ -169,7 +167,6 @@ static void pvm_init_traps_aa64mmfr1(struct kvm_vcpu *vcpu)
  */
 static void pvm_init_trap_regs(struct kvm_vcpu *vcpu)
 {
-	vcpu->arch.cptr_el2 = CPTR_EL2_DEFAULT;
 	vcpu->arch.mdcr_el2 = 0;
 
 	/*

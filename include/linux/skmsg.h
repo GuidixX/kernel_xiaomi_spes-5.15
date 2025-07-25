@@ -8,6 +8,8 @@
 #include <linux/filter.h>
 #include <linux/scatterlist.h>
 #include <linux/skbuff.h>
+#include <linux/workqueue.h>
+#include <linux/bitops.h>
 
 #include <net/sock.h>
 #include <net/tcp.h>
@@ -107,6 +109,7 @@ struct sk_psock {
 	struct sk_psock_work_state	work_state;
 	struct work_struct		work;
 	struct rcu_work			rwork;
+	struct delayed_work		delayed_work;
 };
 
 int sk_msg_alloc(struct sock *sk, struct sk_msg *msg, int len,

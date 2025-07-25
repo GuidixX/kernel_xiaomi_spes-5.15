@@ -1562,7 +1562,6 @@ numa_type numa_classify(unsigned int imbalance_pct,
 		return node_has_spare;
 
 	return node_fully_busy;
-}
 
 #ifdef CONFIG_SCHED_SMT
 /* Forward declarations of select_idle_sibling helpers */
@@ -4591,7 +4590,7 @@ dequeue_entity(struct cfs_rq *cfs_rq, struct sched_entity *se, int flags)
 	account_entity_dequeue(cfs_rq, se);
 
 	/*
-	 * Normalize after update_curr(); which will also have moved
+	 * Normalize after update_curr(); which will also moved
 	 * min_vruntime if @se is the one holding it back. But before doing
 	 * update_min_vruntime() again, which will discount @se's position and
 	 * can move min_vruntime forward still more.
@@ -5090,6 +5089,10 @@ static bool throttle_cfs_rq(struct cfs_rq *cfs_rq)
 
 		qcfs_rq->h_nr_running -= task_delta;
 		qcfs_rq->idle_h_nr_running -= idle_task_delta;
+
+		/* end evaluation on encountering a throttled cfs_rq */
+		if (cfs_rq_throttled(qcfs_rq))
+			goto unthrottle_throttle;
 	}
 
 	/* At this point se is NULL and we are at root level*/
@@ -7997,7 +8000,7 @@ struct lb_env {
 
 	enum fbq_type		fbq_type;
 	enum migration_type	migration_type;
-	struct list_head	tasks;
+	struct list_head		tasks;
 	struct rq_flags		*src_rq_rf;
 };
 
@@ -8208,14 +8211,12 @@ int can_migrate_task(struct task_struct *p, struct lb_env *env)
  */
 static void detach_task(struct task_struct *p, struct lb_env *env)
 {
-	int detached = 0;
-
 	lockdep_assert_rq_held(env->src_rq);
 
 	if (p->sched_task_hot) {
 		p->sched_task_hot = 0;
 		schedstat_inc(env->sd->lb_hot_gained[env->idle]);
-		schedstat_inc(p->stats.nr_forced_migrations);
+		schedstat_inc(p->se.statistics.nr_forced_migrations);
 	}
 
 	deactivate_task(env->src_rq, p, DEQUEUE_NOCLOCK);
@@ -8381,7 +8382,7 @@ static int detach_tasks(struct lb_env *env)
 		continue;
 next:
 		if (p->sched_task_hot)
-			schedstat_inc(p->stats.nr_failed_migrations_hot);
+			schedstat_inc(p->se.statistics.nr_failed_migrations_hot);
 
 		list_move(&p->se.group_node, tasks);
 	}
@@ -10633,9 +10634,7 @@ out:
 	rcu_read_unlock();
 
 	/*
-	 * next_balance will be updated only when there is a need.
-	 * When the cpu is attached to null domain for ex, it will not be
-	 * updated.
+	 * next_balance will be updated only when there is a need. When the cpu is attached to null domain for ex, it will not be updated.
 	 */
 	if (likely(update_next_balance))
 		rq->next_balance = next_balance;
@@ -11042,9 +11041,7 @@ static void _nohz_idle_balance(struct rq *this_rq, unsigned int flags,
 	}
 
 	/*
-	 * next_balance will be updated only when there is a need.
-	 * When the CPU is attached to null domain for ex, it will not be
-	 * updated.
+	 * next_balance will be updated only when there is a need. When the cpu is attached to null domain for ex, it will not be updated.
 	 */
 	if (likely(update_next_balance))
 		nohz.next_balance = next_balance;

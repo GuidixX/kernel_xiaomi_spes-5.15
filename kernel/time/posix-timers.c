@@ -158,9 +158,8 @@ static int posix_timer_add(struct k_itimer *timer)
 			ret = -EAGAIN;
 		spin_unlock(&hash_lock);
 		cond_resched();
-	}
-	/* POSIX return code when no timer ID could be allocated */
-	return -EAGAIN;
+	} while (ret == -ENOENT && sig->posix_timer_id != first_free_id);
+	return ret;
 }
 
 static inline void unlock_timer(struct k_itimer *timr, unsigned long flags)

@@ -682,14 +682,14 @@ static void sk_psock_backlog(struct work_struct *work)
 						  len, ingress);
 			if (ret <= 0) {
 				if (ret == -EAGAIN) {
-					sk_psock_skb_state(psock, state, len, off);
+					sk_psock_skb_state(psock, state, skb, len, off);
 					/* Restore redir info we cleared before */
 					skb_bpf_set_redir(skb, psock->sk, ingress);
 					/* Delay slightly to prioritize any
 					 * other work that might be here.
 					 */
 					if (sk_psock_test_state(psock, SK_PSOCK_TX_ENABLED))
-						schedule_delayed_work(&psock->work, 1);
+						schedule_delayed_work(&psock->delayed_work, 1);
 				}
 				goto end;
 			}
@@ -698,13 +698,12 @@ static void sk_psock_backlog(struct work_struct *work)
 			sk_psock_clear_state(psock, SK_PSOCK_TX_ENABLED);
 			sock_drop(psock->sk, skb);
 			goto end;
-		}
-		off += ret;
-		len -= ret;
+			off += ret;
+			len -= ret;
 		} while (len);
 
 		/* The entire skb sent, clear state */
-		sk_psock_skb_state(psock, state, 0, 0);
+		sk_psock_skb_state(psock, state, skb, 0, 0);
 		skb = skb_dequeue(&psock->ingress_skb);
 		kfree_skb(skb);
 	}

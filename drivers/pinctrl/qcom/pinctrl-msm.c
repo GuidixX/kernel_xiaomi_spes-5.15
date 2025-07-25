@@ -1232,6 +1232,7 @@ static int msm_gpio_irq_set_type(struct irq_data *d, unsigned int type)
 	struct gpio_chip *gc = irq_data_get_irq_chip_data(d);
 	struct msm_pinctrl *pctrl = gpiochip_get_data(gc);
 	const struct msm_pingroup *g;
+	u32 offset = 0;
 	irq_hw_number_t irq = 0;
 	u32 intr_target_mask = GENMASK(2, 0);
 	unsigned long flags;

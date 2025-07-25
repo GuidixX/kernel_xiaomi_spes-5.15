@@ -68,4 +68,3 @@ obj-$(CONFIG_QRC)		+= qrc/
 obj-$(CONFIG_HDMI_INPUT_MUX)	+= hdmi_input_mux.o
 obj-$(CONFIG_ANT_CHECK)          += ant_check.o
 obj-$(CONFIG_ANT_CHECK_DIV)      += ant_check_div.o
-obj-m                           += board_id.o
