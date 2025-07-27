@@ -89,10 +89,10 @@ function ext_module_make() {
 }
 
 function get_modlib_file_path() {
-    local file_path=$(echo $OUT_DIR/$INSTALL_MOD_PATH/**/**/**/$1)
+    local file_path=$(find $OUT_DIR/$INSTALL_MOD_PATH -name "$1" -type f 2>/dev/null | head -1)
 
-    if [[ $(echo $file_path | wc -w) -ne 1 ]]; then
-        echo "None or multiple files were found for $1 on modlib: $file_path"
+    if [[ -z "$file_path" ]]; then
+        echo "File $1 was not found in modlib"
         exit 1
     fi
 
