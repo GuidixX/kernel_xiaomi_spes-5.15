@@ -895,10 +895,10 @@ static void generate_xm_charge_uvent(struct work_struct *work)
 	if(val){
 		pr_err("uevent: BMS PSY get CAPACITY Error !\n");
                 return;
-	}else if(pval.intval > 1){
+	}else if(pval.intval > 1 && chg->usb_online){
 		schedule_delayed_work(&chg->xm_prop_change_work, msecs_to_jiffies(500));
 	}
-	else{
+	else if(chg->usb_online){
 		schedule_delayed_work(&chg->xm_prop_change_work, msecs_to_jiffies(2000));
 	}
 #endif
@@ -2090,6 +2090,11 @@ static void nopmi_chg_workfunc(struct work_struct *work)
 	static int last_quick_charge_type = 0;
 
 	if (nopmi_chg_is_usb_present(chg->main_psy)) {
+		if (!chg->usb_online) {
+			pm_stay_awake(chg->dev);
+			chg->usb_online = 1;
+		}
+		
 		psy = power_supply_get_by_name("usb");
 		if (!psy){
 			pr_err("%s get usb psy fail\n", __func__);
@@ -2108,13 +2113,18 @@ static void nopmi_chg_workfunc(struct work_struct *work)
 
 		start_nopmi_chg_jeita_workfunc();
 		schedule_delayed_work(&chg->nopmi_chg_work, msecs_to_jiffies(NOPMI_CHG_WORKFUNC_GAP));
+	} else {
+		if (chg->usb_online) {
+			pm_relax(chg->dev);
+			chg->usb_online = 0;
+		}
 	}
 }
 
 static void start_nopmi_chg_workfunc(void)
 {
 	pr_info("g_nopmi_chg:0x%x\n", g_nopmi_chg);
-	if(g_nopmi_chg)
+	if(g_nopmi_chg && g_nopmi_chg->usb_online)
 	{
 		schedule_delayed_work(&g_nopmi_chg->nopmi_chg_work, 0);
 		schedule_delayed_work(&g_nopmi_chg->cvstep_monitor_work,
@@ -2264,8 +2274,10 @@ static void  nopmi_cv_step_monitor_work(struct work_struct *work)
 	pr_info("fg_cc_cv_step_check: i:%d cccv_step vote:%d stepdown:%d finalFCC:%d",
 					i, votFCC, stepdown, finalFCC);
 out:
-	schedule_delayed_work(&nopmi_chg->cvstep_monitor_work,
-				msecs_to_jiffies(NOPMI_CHG_CV_STEP_MONITOR_WORKFUNC_GAP));
+	if (nopmi_chg->usb_online && nopmi_chg_is_usb_present(nopmi_chg->main_psy)) {
+		schedule_delayed_work(&nopmi_chg->cvstep_monitor_work,
+					msecs_to_jiffies(NOPMI_CHG_CV_STEP_MONITOR_WORKFUNC_GAP));
+	}
 	pr_info("nopmi_cv_step_monitor_work: end");
 }
 
@@ -2928,6 +2940,55 @@ static int nopmi_chg_remove(struct platform_device *pdev)
 	return 0;
 }
 
+static int nopmi_chg_suspend(struct device *dev)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct nopmi_chg *nopmi_chg = platform_get_drvdata(pdev);
+	
+	if (!nopmi_chg)
+		return 0;
+		
+	pr_info("nopmi_chg: suspend called\n");
+	
+	cancel_delayed_work_sync(&nopmi_chg->nopmi_chg_work);
+	cancel_delayed_work_sync(&nopmi_chg->cvstep_monitor_work);
+	cancel_delayed_work_sync(&nopmi_chg->xm_prop_change_work);
+	cancel_delayed_work_sync(&nopmi_chg->real_type_work);
+	
+	stop_nopmi_chg_jeita_workfunc();
+
+	if (nopmi_chg->usb_online) {
+		pm_relax(nopmi_chg->dev);
+	}
+	
+	return 0;
+}
+
+static int nopmi_chg_resume(struct device *dev)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct nopmi_chg *nopmi_chg = platform_get_drvdata(pdev);
+	
+	if (!nopmi_chg)
+		return 0;
+		
+	pr_info("nopmi_chg: resume called\n");
+
+	if (nopmi_chg->usb_online) {
+		pm_stay_awake(nopmi_chg->dev);
+		schedule_delayed_work(&nopmi_chg->nopmi_chg_work, msecs_to_jiffies(NOPMI_CHG_WORKFUNC_GAP));
+		schedule_delayed_work(&nopmi_chg->cvstep_monitor_work, msecs_to_jiffies(NOPMI_CHG_CV_STEP_MONITOR_WORKFUNC_GAP));
+		start_nopmi_chg_jeita_workfunc();
+	}
+	
+	return 0;
+}
+
+static const struct dev_pm_ops nopmi_chg_pm_ops = {
+	.suspend = nopmi_chg_suspend,
+	.resume = nopmi_chg_resume,
+};
+
 static const struct of_device_id nopmi_chg_dt_match[] = {
 	{.compatible = "qcom,nopmi-chg"},
 	{},
@@ -2938,6 +2999,7 @@ static struct platform_driver nopmi_chg_driver = {
 		.owner = THIS_MODULE,
 		.name = "qcom,nopmi-chg",
 		.of_match_table = nopmi_chg_dt_match,
+		.pm = &nopmi_chg_pm_ops,
 	},
 	.probe = nopmi_chg_probe,
 	.remove = nopmi_chg_remove,

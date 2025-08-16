@@ -682,6 +682,10 @@ static void nopmi_chg_jeita_workfunc(struct work_struct *work)
 		chg_jeita->sw_jeita_start = false;
 	}
 
+	if (chg_jeita->usb_present) {
+		schedule_delayed_work(&chg_jeita->jeita_work,
+			msecs_to_jiffies(JEITA_WORK_DELAY_MS));
+	}
 }
 
 void start_nopmi_chg_jeita_workfunc(void)
