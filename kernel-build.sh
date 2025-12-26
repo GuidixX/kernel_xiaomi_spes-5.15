@@ -70,6 +70,11 @@ function kernel_make() {
         ARCH=arm64 \
         LLVM=1 \
         LLVM_IAS=1 \
+        AR=llvm-ar \
+        NM="llvm-nm --format=bsd" \
+        OBJCOPY=llvm-objcopy \
+        OBJDUMP=llvm-objdump \
+        STRIP=llvm-strip \
         CROSS_COMPILE=aarch64-linux-gnu- \
         CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
         INSTALL_MOD_PATH=$INSTALL_MOD_PATH \
