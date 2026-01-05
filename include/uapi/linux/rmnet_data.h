@@ -6,6 +6,8 @@
 #ifndef _RMNET_DATA_H_
 #define _RMNET_DATA_H_
 
+#include <linux/types.h>
+
 /* Constants */
 #define RMNET_LOCAL_LOGICAL_ENDPOINT -1
 
@@ -34,37 +36,37 @@
 #define RMNET_NETLINK_MSG_RETURNDATA 2
 
 struct rmnet_nl_msg_s {
-	uint16_t reserved;
-	uint16_t message_type;
-	uint16_t reserved2:14;
-	uint16_t crd:2;
+	__u16 reserved;
+	__u16 message_type;
+	__u16 reserved2:14;
+	__u16 crd:2;
 	union {
-		uint16_t arg_length;
-		uint16_t return_code;
+		__u16 arg_length;
+		__u16 return_code;
 	};
 	union {
-		uint8_t data[RMNET_NL_DATA_MAX_LEN];
+		__u8 data[RMNET_NL_DATA_MAX_LEN];
 		struct {
-			uint8_t  dev[RMNET_MAX_STR_LEN];
-			uint32_t flags;
-			uint16_t agg_size;
-			uint16_t agg_count;
-			uint8_t  tail_spacing;
+			__u8  dev[RMNET_MAX_STR_LEN];
+			__u32 flags;
+			__u16 agg_size;
+			__u16 agg_count;
+			__u8  tail_spacing;
 		} data_format;
 		struct {
-			uint8_t dev[RMNET_MAX_STR_LEN];
-			int32_t ep_id;
-			uint8_t operating_mode;
-			uint8_t next_dev[RMNET_MAX_STR_LEN];
+			__u8 dev[RMNET_MAX_STR_LEN];
+			__s32 ep_id;
+			__u8 operating_mode;
+			__u8 next_dev[RMNET_MAX_STR_LEN];
 		} local_ep_config;
 		struct {
-			uint32_t id;
-			uint8_t  vnd_name[RMNET_MAX_STR_LEN];
+			__u32 id;
+			__u8  vnd_name[RMNET_MAX_STR_LEN];
 		} vnd;
 		struct {
-			uint32_t id;
-			uint32_t map_flow_id;
-			uint32_t tc_flow_id;
+			__u32 id;
+			__u32 map_flow_id;
+			__u32 tc_flow_id;
 		} flow_control;
 	};
 };
