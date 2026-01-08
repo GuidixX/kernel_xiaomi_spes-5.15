@@ -25,8 +25,6 @@ if [[ "$TARGET" == "spes" ]]; then
     TARGET_KERNEL_EXT_MODULES="
       drivers/input/fingerprint/fpc
       drivers/input/fingerprint/goodix
-      drivers/torch
-      drivers/st21nfc
       qcom/opensource/mmrm-driver
       qcom/opensource/audio-kernel
       qcom/opensource/camera-kernel
