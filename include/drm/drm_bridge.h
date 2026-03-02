@@ -621,6 +621,15 @@ struct drm_bridge_funcs {
 	void (*hpd_notify)(struct drm_bridge *bridge,
 			   enum drm_connector_status status);
 
+	void (*disp_param_set)(struct drm_bridge *bridge, int cmd);
+	ssize_t (*disp_param_get)(struct drm_bridge *bridge, char *pbuf);
+
+	ssize_t (*mipi_reg_read)(struct drm_bridge *bridge, char *pbuf);
+	ssize_t (*mipi_reg_write)(struct drm_bridge *bridge, char *pbuf, size_t count);
+
+	int (*doze_backlight_set)(struct drm_bridge *bridge, int doze_backlight);
+	ssize_t (*doze_backlight_get)(struct drm_bridge *bridge, char *pbuf);
+
 	/**
 	 * @hpd_enable:
 	 *
@@ -794,6 +803,15 @@ struct drm_bridge *of_drm_find_bridge(struct device_node *np);
 int drm_bridge_attach(struct drm_encoder *encoder, struct drm_bridge *bridge,
 		      struct drm_bridge *previous,
 		      enum drm_bridge_attach_flags flags);
+
+void drm_bridge_disp_param_set(struct drm_bridge *bridge, int cmd);
+ssize_t drm_bridge_disp_param_get(struct drm_bridge *bridge, char *pbuf);
+
+ssize_t drm_bridge_mipi_reg_read(struct drm_bridge *bridge, char *pbuf);
+ssize_t drm_bridge_mipi_reg_write(struct drm_bridge *bridge, char *pbuf, size_t count);
+
+int drm_bridge_doze_backlight_set(struct drm_bridge *bridge, int doze_backlight);
+ssize_t drm_bridge_doze_backlight_get(struct drm_bridge *bridge, char *pbuf);
 
 /**
  * drm_bridge_get_next_bridge() - Get the next bridge in the chain

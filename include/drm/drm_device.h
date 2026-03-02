@@ -280,6 +280,12 @@ struct drm_device {
 	/** @vram_mm: VRAM MM memory manager */
 	struct drm_vram_mm *vram_mm;
 
+	/*add for thermal begin*/
+	int doze_state;
+	int pre_state;
+	int doze_brightness;
+	/*add for thermal end*/
+
 	/**
 	 * @switch_power_state:
 	 *

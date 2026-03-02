@@ -1234,6 +1234,148 @@ struct drm_bridge *of_drm_find_bridge(struct device_node *np)
 EXPORT_SYMBOL(of_drm_find_bridge);
 #endif
 
+void drm_bridge_disp_param_set(struct drm_bridge *bridge, int cmd)
+{
+	struct drm_encoder *encoder;
+	struct drm_bridge *iter;
+
+	if (!bridge)
+		return;
+
+	encoder = bridge->encoder;
+	if (!encoder)
+		return;
+
+	list_for_each_entry_reverse(iter, &encoder->bridge_chain, chain_node) {
+		if (iter->funcs->disp_param_set)
+			iter->funcs->disp_param_set(iter, cmd);
+
+		if (iter == bridge)
+			break;
+	}
+}
+EXPORT_SYMBOL(drm_bridge_disp_param_set);
+
+ssize_t drm_bridge_disp_param_get(struct drm_bridge *bridge, char *pbuf)
+{
+	struct drm_encoder *encoder;
+	struct drm_bridge *iter;
+	ssize_t ret = 0;
+
+	if (!bridge)
+		return 0;
+
+	encoder = bridge->encoder;
+	if (!encoder)
+		return 0;
+
+	list_for_each_entry_reverse(iter, &encoder->bridge_chain, chain_node) {
+		if (iter->funcs->disp_param_get)
+			ret = iter->funcs->disp_param_get(iter, pbuf);
+
+		if (iter == bridge)
+			break;
+	}
+	return ret;
+}
+EXPORT_SYMBOL(drm_bridge_disp_param_get);
+
+ssize_t drm_bridge_mipi_reg_read(struct drm_bridge *bridge, char *pbuf)
+{
+	struct drm_encoder *encoder;
+	struct drm_bridge *iter;
+	ssize_t ret = 0;
+
+	if (!bridge)
+		return 0;
+
+	encoder = bridge->encoder;
+	if (!encoder)
+		return 0;
+
+	list_for_each_entry_reverse(iter, &encoder->bridge_chain, chain_node) {
+		if (iter->funcs->mipi_reg_read)
+			ret = iter->funcs->mipi_reg_read(iter, pbuf);
+
+		if (iter == bridge)
+			break;
+	}
+	return ret;
+}
+EXPORT_SYMBOL(drm_bridge_mipi_reg_read);
+
+ssize_t drm_bridge_mipi_reg_write(struct drm_bridge *bridge, char *pbuf, size_t count)
+{
+	struct drm_encoder *encoder;
+	struct drm_bridge *iter;
+	ssize_t ret = 0;
+
+	if (!bridge)
+		return 0;
+
+	encoder = bridge->encoder;
+	if (!encoder)
+		return 0;
+
+	list_for_each_entry_reverse(iter, &encoder->bridge_chain, chain_node) {
+		if (iter->funcs->mipi_reg_write)
+			ret = iter->funcs->mipi_reg_write(iter, pbuf, count);
+
+		if (iter == bridge)
+			break;
+	}
+	return ret;
+}
+EXPORT_SYMBOL(drm_bridge_mipi_reg_write);
+
+int drm_bridge_doze_backlight_set(struct drm_bridge *bridge, int doze_backlight)
+{
+	struct drm_encoder *encoder;
+	struct drm_bridge *iter;
+	int ret = 0;
+
+	if (!bridge)
+		return 0;
+
+	encoder = bridge->encoder;
+	if (!encoder)
+		return 0;
+
+	list_for_each_entry_reverse(iter, &encoder->bridge_chain, chain_node) {
+		if (iter->funcs->doze_backlight_set)
+			ret = iter->funcs->doze_backlight_set(iter, doze_backlight);
+
+		if (iter == bridge)
+			break;
+	}
+	return ret;
+}
+EXPORT_SYMBOL(drm_bridge_doze_backlight_set);
+
+ssize_t drm_bridge_doze_backlight_get(struct drm_bridge *bridge, char *pbuf)
+{
+	struct drm_encoder *encoder;
+	struct drm_bridge *iter;
+	ssize_t ret = 0;
+
+	if (!bridge)
+		return 0;
+
+	encoder = bridge->encoder;
+	if (!encoder)
+		return 0;
+
+	list_for_each_entry_reverse(iter, &encoder->bridge_chain, chain_node) {
+		if (iter->funcs->doze_backlight_get)
+			ret = iter->funcs->doze_backlight_get(iter, pbuf);
+
+		if (iter == bridge)
+			break;
+	}
+	return ret;
+}
+EXPORT_SYMBOL(drm_bridge_doze_backlight_get);
+
 MODULE_AUTHOR("Ajay Kumar <ajaykumar.rs@samsung.com>");
 MODULE_DESCRIPTION("DRM bridge infrastructure");
 MODULE_LICENSE("GPL and additional rights");

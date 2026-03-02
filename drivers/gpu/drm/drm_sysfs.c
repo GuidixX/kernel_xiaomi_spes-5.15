@@ -25,6 +25,8 @@
 #include <drm/drm_print.h>
 #include <drm/drm_property.h>
 #include <drm/drm_sysfs.h>
+#include <drm/drm_encoder.h>
+#include <drm/drm_bridge.h>
 
 #include "drm_internal.h"
 #include "drm_crtc_internal.h"
@@ -235,16 +237,186 @@ static ssize_t modes_show(struct device *device,
 	return written;
 }
 
+static ssize_t mipi_reg_show(struct device *device,
+							  struct device_attribute *attr,
+							  char *buf)
+{
+	struct drm_connector *connector = to_drm_connector(device);
+	struct drm_encoder *encoder;
+	struct drm_bridge *bridge;
+
+	if (!connector)
+		return 0;
+
+	encoder = connector->encoder;
+	if (!encoder)
+		return 0;
+
+	bridge = drm_bridge_chain_get_first_bridge(encoder);
+	if (!bridge)
+		return 0;
+
+	return drm_bridge_mipi_reg_read(bridge, buf);
+}
+
+static ssize_t mipi_reg_store(struct device *device,
+							  struct device_attribute *attr,
+							  const char *buf, size_t count)
+{
+	struct drm_connector *connector = to_drm_connector(device);
+	struct drm_encoder *encoder;
+	struct drm_bridge *bridge;
+
+	if (!connector)
+		return count;
+
+	encoder = connector->encoder;
+	if (!encoder)
+		return count;
+
+	bridge = drm_bridge_chain_get_first_bridge(encoder);
+	if (!bridge)
+		return count;
+
+	return drm_bridge_mipi_reg_write(bridge, (char *)buf, count);
+}
+
+static ssize_t doze_brightness_show(struct device *device,
+			    struct device_attribute *attr,
+			   char *buf)
+{
+	struct drm_connector *connector = to_drm_connector(device);
+	struct drm_device *dev = connector->dev;
+
+	return snprintf(buf, PAGE_SIZE, "%d\n",
+			dev->doze_brightness);
+}
+
+static ssize_t doze_backlight_store(struct device *device,
+			   struct device_attribute *attr,
+			   const char *buf, size_t count)
+{
+	struct drm_connector *connector = to_drm_connector(device);
+	struct drm_encoder *encoder;
+	struct drm_bridge *bridge;
+	int doze_backlight;
+	int ret;
+
+	if (!connector)
+		return count;
+
+	encoder = connector->encoder;
+	if (!encoder)
+		return count;
+
+	bridge = drm_bridge_chain_get_first_bridge(encoder);
+	if (!bridge)
+		return count;
+
+	ret = kstrtoint(buf, 0, &doze_backlight);
+	if (ret)
+		return ret;
+
+	ret = drm_bridge_doze_backlight_set(bridge, doze_backlight);
+
+	return ret ? ret : count;
+}
+
+static ssize_t doze_backlight_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct drm_connector *connector = to_drm_connector(dev);
+	struct drm_encoder *encoder;
+	struct drm_bridge *bridge;
+
+	if (!connector)
+		return 0;
+
+	encoder = connector->encoder;
+	if (!encoder)
+		return 0;
+
+	bridge = drm_bridge_chain_get_first_bridge(encoder);
+	if (!bridge)
+		return 0;
+
+	return drm_bridge_doze_backlight_get(bridge, buf);
+}
+
+void drm_bridge_disp_param_set(struct drm_bridge *bridge, int cmd);
+static ssize_t disp_param_store(struct device *device,
+			   struct device_attribute *attr,
+			   const char *buf, size_t count)
+{
+	int param;
+	struct drm_connector *connector = NULL;
+	struct drm_encoder *encoder = NULL;
+	struct drm_bridge *bridge = NULL;
+
+	if (!device)
+		return count;
+
+	connector = to_drm_connector(device);
+	if (!connector)
+		return count;
+
+	encoder = connector->encoder;
+	if (!encoder)
+		return count;
+
+	bridge = drm_bridge_chain_get_first_bridge(encoder);
+	if (!bridge)
+		return count;
+	sscanf(buf, "0x%x", &param);
+
+	drm_bridge_disp_param_set(bridge, param);
+
+	return count;
+}
+
+ssize_t drm_bridge_disp_param_get(struct drm_bridge *bridge, char *pbuf);
+static ssize_t disp_param_show(struct device *device,
+			   struct device_attribute *attr,
+			   char *buf)
+{
+	ssize_t ret = 0;
+	struct drm_connector *connector = NULL;
+	struct drm_encoder *encoder = NULL;
+	struct drm_bridge *bridge = NULL;
+
+	connector = to_drm_connector(device);
+	if (!connector)
+		return ret;
+
+	encoder = connector->encoder;
+	if (!encoder)
+		return ret;
+
+	bridge = drm_bridge_chain_get_first_bridge(encoder);
+	if (!bridge)
+		return ret;
+	ret = drm_bridge_disp_param_get(bridge, buf);
+	return ret;
+}
+
 static DEVICE_ATTR_RW(status);
 static DEVICE_ATTR_RO(enabled);
 static DEVICE_ATTR_RO(dpms);
 static DEVICE_ATTR_RO(modes);
+static DEVICE_ATTR_RW(mipi_reg);
+static DEVICE_ATTR_RW(disp_param);
+static DEVICE_ATTR_RO(doze_brightness);
+static DEVICE_ATTR_RW(doze_backlight);
 
 static struct attribute *connector_dev_attrs[] = {
 	&dev_attr_status.attr,
 	&dev_attr_enabled.attr,
 	&dev_attr_dpms.attr,
 	&dev_attr_modes.attr,
+	&dev_attr_mipi_reg.attr,
+	&dev_attr_disp_param.attr,
+	&dev_attr_doze_brightness.attr,
+	&dev_attr_doze_backlight.attr,
 	NULL
 };
 
