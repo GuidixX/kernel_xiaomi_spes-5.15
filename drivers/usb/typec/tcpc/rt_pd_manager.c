@@ -124,6 +124,7 @@ struct rt_pd_manager_data {
 	struct delayed_work usb_dwork;
 	struct tcpc_device *tcpc;
 	struct notifier_block pd_nb;
+	struct notifier_block psy_nb;
 	enum dr usb_dr;
 	int usb_type_polling_cnt;
 	int sink_mv_pd;
@@ -432,6 +433,56 @@ static void pd_sink_set_vol_and_cur(struct rt_pd_manager_data *rpmd,
 	val = ma * 1000;
 	smblib_set_prop(rpmd, USB_PD_CURRENT_MAX, val);
 }
+/*
+ * Fallback PSY notifier: start USB peripheral when bq2589x detects an SDP/CDP
+ * cable but the RT1711H TCPC failed to generate a CC attach interrupt (e.g.
+ * because the chip was stuck in LPM after booting without a cable connected).
+ */
+static int rpmd_psy_notifier_call(struct notifier_block *nb,
+				  unsigned long event, void *data)
+{
+	struct rt_pd_manager_data *rpmd =
+		container_of(nb, struct rt_pd_manager_data, psy_nb);
+	union power_supply_propval propval = {0};
+	int ret;
+
+	ret = smblib_get_prop_from_bbc(rpmd, POWER_SUPPLY_PROP_CHARGE_TYPE,
+				      &propval);
+	if (ret < 0)
+		return NOTIFY_DONE;
+
+	if (propval.intval == POWER_SUPPLY_TYPE_USB ||
+	    propval.intval == POWER_SUPPLY_TYPE_USB_CDP ||
+	    propval.intval == QTI_POWER_SUPPLY_TYPE_USB_FLOAT) {
+		/* USB cable detected by charger IC; check if TCPC missed it */
+		if (rpmd->usb_dr == DR_IDLE) {
+			pr_info("%s: USB type=%d detected via bbc PSY, TCPC blind "
+				"-- starting peripheral fallback\n",
+				__func__, propval.intval);
+			cancel_delayed_work(&rpmd->usb_dwork);
+			rpmd->usb_dr = DR_DEVICE;
+			rpmd->usb_type_polling_cnt = 0;
+			schedule_delayed_work(&rpmd->usb_dwork, 0);
+		}
+	} else if (propval.intval == POWER_SUPPLY_TYPE_UNKNOWN) {
+		/*
+		 * Charger disconnected but TCPC may not have fired a detach
+		 * event (same LPM blind-spot).  Stop peripheral mode if we
+		 * started it via the fallback path above.
+		 */
+		if (rpmd->usb_dr == DR_DEVICE ||
+		    rpmd->usb_dr == DR_HOST_TO_DEVICE) {
+			pr_info("%s: USB disconnect via bbc PSY fallback\n",
+				__func__);
+			cancel_delayed_work(&rpmd->usb_dwork);
+			rpmd->usb_dr = DR_IDLE;
+			schedule_delayed_work(&rpmd->usb_dwork, 0);
+		}
+	}
+
+	return NOTIFY_DONE;
+}
+
 static int pd_tcp_notifier_call(struct notifier_block *nb,
 				unsigned long event, void *data)
 {
@@ -1312,6 +1363,21 @@ static int rt_pd_manager_probe(struct platform_device *pdev)
 			goto err_reg_tcpc_notifier;
 	}
 
+	/*
+	 * Register a PSY notifier as a fallback for the case where the
+	 * RT1711H TCPC is stuck in LPM and misses CC attachment after the
+	 * device boots without a cable plugged in.
+	 */
+	rpmd->psy_nb.notifier_call = rpmd_psy_notifier_call;
+	ret = power_supply_reg_notifier(&rpmd->psy_nb);
+	if (ret < 0) {
+		dev_warn(rpmd->dev,
+			 "%s register psy notifier fail(%d), USB fallback disabled\n",
+			 __func__, ret);
+		/* Non-fatal; continue without fallback */
+		ret = 0;
+	}
+
 	tcpc_class_complete_init();
 out:
 	platform_set_drvdata(pdev, rpmd);
@@ -1335,6 +1401,8 @@ static int rt_pd_manager_remove(struct platform_device *pdev)
 
 	if (!rpmd)
 		return -EINVAL;
+
+	power_supply_unreg_notifier(&rpmd->psy_nb);
 
 	ret = unregister_tcp_dev_notifier(rpmd->tcpc, &rpmd->pd_nb,
 					  TCP_NOTIFY_TYPE_ALL);
