@@ -23,6 +23,7 @@ INSTALL_MOD_PATH=modules_out
 if [[ "$TARGET" == "spes" ]]; then
     TARGET_DEFCONFIG="gki_defconfig vendor/bengal_GKI.config vendor/spes_GKI.config"
     TARGET_KERNEL_EXT_MODULES="
+      drivers/st21nfc
       drivers/input/fingerprint/fpc
       drivers/input/fingerprint/goodix
       qcom/opensource/mmrm-driver
